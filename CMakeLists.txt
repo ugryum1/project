@@ -1,15 +1,10 @@
-cmake_minimum_required(VERSION 3.23)
-
-set(project "project")
-project(${project})
+cmake_minimum_required(VERSION 3.10)
+project(project)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(${project}_SOURCES
-        main.cpp)
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
-set(${project}_SOURCE_LIST
-        ${${project}_SOURCES})
-
-add_executable(${project}
-        ${${project}_SOURCE_LIST})
+add_executable(myapp main.cpp)
+target_link_libraries(myapp Qt5::Widgets)
