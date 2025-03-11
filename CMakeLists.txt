@@ -4,7 +4,8 @@ project(project)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_AUTOMOC ON)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
-add_executable(myapp main.cpp)
+add_executable(myapp main.cpp employee_table.cpp)
 target_link_libraries(myapp Qt5::Widgets)
