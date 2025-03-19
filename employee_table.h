@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 #include <QTableWidget>
+#include <vector>
+#include <string>
+
+#include "employeeLib/employee.h"
 
 // Класс EmployeeTable представляет главное окно приложения с таблицей сотрудников
 class EmployeeTable : public QMainWindow {
@@ -25,6 +29,16 @@ private slots:
 
 private:
     QTableWidget *table;  // Таблица для отображения данных сотрудников
+    std::vector <Employee> dataBase; // Список с данными о всех сотрудниках
+
+    // Методы для загрузки и сохранения данных
+    void loadDataFromFile(const QString &filename);
+    void saveDataToFile(const QString &filename);
+
+
+protected:
+    // Переопределённое событие закрытия окна
+    void closeEvent(QCloseEvent *event) override;
 };
 
 #endif // EMPLOYEE_TABLE_H
