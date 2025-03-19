@@ -1,3 +1,5 @@
 build/
 .vscode
-.txt
+
+copyDB.txt
+dataBase.txt
