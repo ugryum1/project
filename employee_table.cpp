@@ -9,12 +9,16 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QDebug>
+#include <QLabel>
+#include <QComboBox>
+#include <QDate>
+#include <algorithm>
 
 EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     setFixedSize(960, 540);  // Фиксированный размер окна
 
     this->setStyleSheet(
-        "QMainWindow { background-color: #f0f0f0; }"  // Цвет фона окна
+        "QMainWindow { background-color:rgb(255, 240, 130); }"  // Цвет фона окна
         "QTableWidget::item { background-color: white; color: black; }"  // Цвет фона ячеек и текста
         "QHeaderView::section { background-color: #0078D7; color: black; font-weight: bold; }"  // Заголовки таблицы
         "QPushButton { background-color:rgb(0, 225, 255); color: black; border-radius: 5px; padding: 5px; }"  // Кнопки
@@ -25,6 +29,23 @@ EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     // Создание главного виджета и компоновки
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+
+    // Панель сортировки
+    QWidget *sortPanel = new QWidget(this);
+    QHBoxLayout *sortLayout = new QHBoxLayout(sortPanel);
+
+    QLabel *sortLabel = new QLabel("Сортировка:", this);
+    QComboBox *sortCombo = new QComboBox(this);
+    sortCombo->addItems({"Без сортировки", "По ФИО (А-Я)", "По ФИО (Я-А)", "По ЗП (возр.)", "По ЗП (убыв.)", "По дате рождения"});
+
+    QPushButton *sortButton = new QPushButton("Применить", this);
+    sortLayout->addWidget(sortLabel); // Текст "Сортировка"
+    sortLayout->addWidget(sortCombo); // Выбадающий список (комбобокс)
+    sortLayout->addWidget(sortButton); // Кнопка "Применить" (запуск сортироки)
+    sortLayout->addStretch(); // Расположение элементов ближе к левому краю
+
+    // Добавляем готовую панель сортировки в главное окно
+    layout->addWidget(sortPanel);
 
     // Создание таблицы с 6 колонками
     table = new QTableWidget(0, 6, this);
@@ -45,6 +66,11 @@ EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     layout->addWidget(addButton);
     connect(addButton, &QPushButton::clicked, this, &EmployeeTable::addRow);
 
+    // Подключение сигналов
+    connect(sortButton, &QPushButton::clicked, [this, sortCombo]() {
+        applySorting(sortCombo->currentIndex());
+    });
+
     setCentralWidget(centralWidget);
 
     loadDataFromFile("/home/ugryum/project/dataBase.txt");
@@ -60,7 +86,6 @@ void EmployeeTable::addRow() {
 
     // Создаём кнопку "Удалить"
     QPushButton *deleteButton = new QPushButton("Удалить");
-    connect(deleteButton, &QPushButton::clicked, [this, row]() { deleteRow(row); });
     table->setCellWidget(row, 5, deleteButton);
 
     connect(deleteButton, &QPushButton::clicked, [this, deleteButton]() {
@@ -71,6 +96,98 @@ void EmployeeTable::addRow() {
 
 void EmployeeTable::deleteRow(int row) {
     table->removeRow(row);
+}
+
+void EmployeeTable::customSort(int column, bool ascending) {
+    QList<QList<QVariant>> rows; // Список строк, каждая строка — список значений ячеек (и индекс)
+
+    // Извлекаем данные из таблицы в список
+    for (int i = 0; i < table->rowCount(); ++i) {
+        QList<QVariant> rowData;
+
+        // Сохраняем значения из первых 5 колонок (ФИО, Телефон, Должность, ЗП, Дата рождения)
+        for (int j = 0; j < 5; ++j) {
+            rowData.append(table->item(i, j)->text());
+        }
+
+        rowData.append(QVariant::fromValue(i)); // Добавляем оригинальный индекс строки (если вдруг понадобится)
+        rows.append(rowData); // Добавляем строку в общий список
+    }
+
+    // Сортируем список строк по выбранному столбцу
+    std::sort(rows.begin(), rows.end(), [column, ascending](const QList<QVariant> &a, const QList<QVariant> &b) {
+        // Если колонка — "Зарплата" (index 3)
+        if (column == 3) {
+            bool ok1, ok2;
+            // Преобразуем зарплату в double (заменяя запятые на точки для корректности)
+            double val1 = a[column].toString().replace(",", ".").toDouble(&ok1);
+            double val2 = b[column].toString().replace(",", ".").toDouble(&ok2);
+
+            // Сравниваем по возрастанию или убыванию
+            return ascending ? val1 < val2 : val1 > val2;
+        }
+        // Если колонка — "Дата рождения" (index 4)
+        else if (column == 4) {
+            // Преобразуем строки в QDate
+            QDate d1 = QDate::fromString(a[column].toString(), "dd.MM.yyyy");
+            QDate d2 = QDate::fromString(b[column].toString(), "dd.MM.yyyy");
+
+            // Сравниваем по дате
+            return ascending ? d1 < d2 : d1 > d2;
+        }
+        else {
+            // Сравнение строк в других колонках (например, ФИО, Телефон, Должность)
+            return ascending ? a[column].toString() < b[column].toString()
+                             : a[column].toString() > b[column].toString();
+        }
+    });
+
+    // Очищаем таблицу перед повторным добавлением отсортированных данных
+    table->setRowCount(0);
+
+    // Добавляем отсортированные строки обратно в таблицу
+    for (const auto &rowData : rows) {
+        int row = table->rowCount(); // Получаем текущий индекс для новой строки
+        table->insertRow(row);       // Вставляем строку
+
+        // Вставляем текстовые данные в первые 5 колонок
+        for (int j = 0; j < 5; ++j) {
+            table->setItem(row, j, new QTableWidgetItem(rowData[j].toString()));
+        }
+
+        // Создаём кнопку "Удалить" для строки
+        QPushButton *deleteButton = new QPushButton("Удалить");
+        table->setCellWidget(row, 5, deleteButton); // Устанавливаем кнопку в 6-ю колонку
+
+        // Подключаем сигнал нажатия на кнопку к функции удаления строки
+        connect(deleteButton, &QPushButton::clicked, [this, deleteButton]() {
+            int rowToDelete = table->indexAt(deleteButton->pos()).row();
+            deleteRow(rowToDelete); // Удаляем строку по найденному индексу
+        });
+    }
+}
+
+void EmployeeTable::applySorting(int sortType)
+{
+    switch(sortType) {
+        case 0: // Без сортировки — не делаем ничего
+            break;
+        case 1: // ФИО (А-Я)
+            customSort(0, true);
+            break;
+        case 2: // ФИО (Я-А)
+            customSort(0, false);
+            break;
+        case 3: // ЗП (возр.)
+            customSort(3, true);
+            break;
+        case 4: // ЗП (убыв.)
+            customSort(3, false);
+            break;
+        case 5: // Дата рождения
+            customSort(4, true);
+            break;
+    }
 }
 
 void EmployeeTable::loadDataFromFile(const QString &filename) {

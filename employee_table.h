@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QTableWidget>
+#include <QCloseEvent>
 #include <vector>
 #include <string>
 
@@ -27,6 +28,12 @@ private slots:
     // Удаление строки
     void deleteRow(int row);
 
+    // Описание процесса сортировки
+    void customSort(int column, bool ascending);
+
+    // Применение сортировки
+    void applySorting(int sortType);
+
 private:
     QTableWidget *table;  // Таблица для отображения данных сотрудников
     std::vector <Employee> dataBase; // Список с данными о всех сотрудниках
@@ -34,7 +41,6 @@ private:
     // Методы для загрузки и сохранения данных
     void loadDataFromFile(const QString &filename);
     void saveDataToFile(const QString &filename);
-
 
 protected:
     // Переопределённое событие закрытия окна
