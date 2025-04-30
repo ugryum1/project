@@ -9,7 +9,7 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 add_subdirectory(employeeLib)
 
-add_executable(myapp main.cpp employee_table.cpp)
+add_executable(myapp main.cpp employee_table.cpp input_validator.cpp)
 
 target_link_libraries(myapp Qt5::Widgets employeeLib)
 

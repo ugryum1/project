@@ -1,29 +1,39 @@
-#include "employee_table.h"
-#include <QVBoxLayout>
-#include <QPushButton>
-#include <QDialog>
-#include <QLineEdit>
-#include <QHeaderView>
-#include <QCloseEvent>
-#include <QFile>
-#include <QTextStream>
-#include <QMessageBox>
-#include <QDebug>
-#include <QLabel>
-#include <QComboBox>
-#include <QDate>
-#include <algorithm>
+#include "employee_table.h"  // Собственный заголовочный файл класса
+#include "input_validator.h" // Собственный класс для валидации ввода
+
+// Основные модули Qt
+#include <QVBoxLayout>      // Вертикальное размещение виджетов
+#include <QPushButton>      // Кнопки интерфейса
+#include <QLineEdit>        // Текстовые поля ввода
+#include <QHeaderView>      // Заголовки таблицы
+#include <QFile>            // Работа с файлами
+#include <QTextStream>      // Текстовый поток ввода/вывода
+#include <QMessageBox>      // Диалоговые окна сообщений
+#include <QLabel>           // Текстовые метки
+#include <QComboBox>        // Выпадающие списки
+#include <QDate>            // Работа с датами
+
+// Дополнительные модули
+#include <QDebug>          // Для отладочного вывода
+#include <QCloseEvent>     // Обработка события закрытия окна
+#include <algorithm>       // Стандартные алгоритмы (sort) - необходимо для сортировки
 
 EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
-    setFixedSize(960, 540);  // Фиксированный размер окна
+    setFixedSize(960, 540); // Фиксированный размер окна
 
     this->setStyleSheet(
-        "QMainWindow { background-color:rgb(255, 240, 130); }"  // Цвет фона окна
-        "QTableWidget::item { background-color: white; color: black; }"  // Цвет фона ячеек и текста
-        "QHeaderView::section { background-color: #0078D7; color: black; font-weight: bold; }"  // Заголовки таблицы
-        "QPushButton { background-color:rgb(0, 225, 255); color: black; border-radius: 5px; padding: 5px; }"  // Кнопки
-        "QPushButton:hover { background-color: #0078D7; }"  // Цвет при наведении
-        "QPushButton:pressed { background-color: #0078D7; }"  // Цвет при нажатии
+        "QMainWindow { background-color: #f5f7fa; }" // Светлый серо-голубой фон окна
+        "QTableWidget { background-color: white; gridline-color: #e0e0e0; }" // Белый фон таблицы с серыми линиями
+        "QTableWidget::item { background-color: white; color: #333333; padding: 5px; }" // Темно-серый текст в ячейках
+        "QTableWidget::item:selected { background-color: #4a90e2; color: white; }" // Синий фон для выделенных ячеек
+        "QHeaderView::section { background-color: #4a90e2; color: white; font-weight: bold; "
+        "padding: 5px; border: none; }" // Синие заголовки с белым текстом
+        "QPushButton { background-color: #4a90e2; color: white; border: none; "
+        "border-radius: 4px; padding: 6px 12px; font-weight: 500; }" // Синие кнопки с белым текстом
+        "QPushButton:hover { background-color: #357abd; }" // Темно-синий при наведении
+        "QPushButton:pressed { background-color: #2a5f8f; }" // Еще темнее при нажатии
+        "QComboBox { padding: 5px; border: 1px solid #d0d0d0; border-radius: 4px; }" // Стиль для комбобокса
+        "QLabel { color: #333333; }" // Темно-серый текст для меток
     );
 
     // Создание главного виджета и компоновки
@@ -59,14 +69,22 @@ EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     table->setColumnWidth(4, 120);
     table->setColumnWidth(5, 100);  // Кнопка "Удалить"
 
+    // Настройка валидаторов ввода
+    QRegularExpressionValidator *phoneValidator = createPhoneValidator();
+    QRegularExpressionValidator *salaryValidator = createSalaryValidator();
+    QRegularExpressionValidator *dateValidator = createDateValidator();
+    table->setItemDelegateForColumn(1, new InputValidator(phoneValidator, this));  // Телефон
+    table->setItemDelegateForColumn(3, new InputValidator(salaryValidator, this)); // Зарплата
+    table->setItemDelegateForColumn(4, new InputValidator(dateValidator, this));   // Дата
+
     layout->addWidget(table);
 
     // Кнопка "Добавить" для создания новых строк
     QPushButton *addButton = new QPushButton("Добавить", this);
     layout->addWidget(addButton);
-    connect(addButton, &QPushButton::clicked, this, &EmployeeTable::addRow);
 
     // Подключение сигналов
+    connect(addButton, &QPushButton::clicked, this, &EmployeeTable::addRow);
     connect(sortButton, &QPushButton::clicked, [this, sortCombo]() {
         applySorting(sortCombo->currentIndex());
     });
@@ -74,6 +92,22 @@ EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(centralWidget);
 
     loadDataFromFile("/home/ugryum/project/dataBase.txt");
+}
+
+// Методы валидации ввода
+QRegularExpressionValidator* EmployeeTable::createPhoneValidator() {
+    QRegularExpression phoneRegex("^[+0-9\\-\\(\\)\\s]{6,20}$");
+    return new QRegularExpressionValidator(phoneRegex, this);
+}
+
+QRegularExpressionValidator* EmployeeTable::createSalaryValidator() {
+    QRegularExpression salaryRegex("^\\d{1,8}([.,]\\d{1,2})?$");
+    return new QRegularExpressionValidator(salaryRegex, this);
+}
+
+QRegularExpressionValidator* EmployeeTable::createDateValidator() {
+    QRegularExpression dateRegex("^(0[1-9]|[12][0-9]|3[01])\\.(0[1-9]|1[012])\\.(19\\d{2}|20(0[0-9]|10|11))$");
+    return new QRegularExpressionValidator(dateRegex, this);
 }
 
 // Деструктор класса EmployeeTable
@@ -100,18 +134,36 @@ void EmployeeTable::deleteRow(int row) {
 
 void EmployeeTable::customSort(int column, bool ascending) {
     QList<QList<QVariant>> rows; // Список строк, каждая строка — список значений ячеек (и индекс)
+    QList<QList<QVariant>> emptyRows; // Пустые строки
 
     // Извлекаем данные из таблицы в список
     for (int i = 0; i < table->rowCount(); ++i) {
         QList<QVariant> rowData;
+        bool isRowFilled = true;
 
         // Сохраняем значения из первых 5 колонок (ФИО, Телефон, Должность, ЗП, Дата рождения)
+        // Только заполненные строки
         for (int j = 0; j < 5; ++j) {
+            QTableWidgetItem* item = table->item(i, j);
+            if (!item || item->text().isEmpty()) {
+                isRowFilled = false;
+                break;
+            }
             rowData.append(table->item(i, j)->text());
         }
 
-        rowData.append(QVariant::fromValue(i)); // Добавляем оригинальный индекс строки (если вдруг понадобится)
-        rows.append(rowData); // Добавляем строку в общий список
+        if (isRowFilled) {
+            rowData.append(i); // Сохраняем оригинальный индекс
+            rows.append(rowData);
+        } else {
+            // Для пустых строк сохраняем все имеющиеся данные
+            QList<QVariant> emptyRowData;
+            for (int j = 0; j < 5; ++j) {
+                QTableWidgetItem* item = table->item(i, j);
+                emptyRowData.append(item ? item->text() : "");
+            }
+            emptyRows.append(emptyRowData);
+        }
     }
 
     // Сортируем список строк по выбранному столбцу
@@ -145,26 +197,37 @@ void EmployeeTable::customSort(int column, bool ascending) {
     // Очищаем таблицу перед повторным добавлением отсортированных данных
     table->setRowCount(0);
 
-    // Добавляем отсортированные строки обратно в таблицу
+    // Добавляем отсортированные заполненные строки
     for (const auto &rowData : rows) {
-        int row = table->rowCount(); // Получаем текущий индекс для новой строки
-        table->insertRow(row);       // Вставляем строку
+        addRowToTable(rowData.mid(0, 5)); // Берем только данные (без индекса)
+    }
 
-        // Вставляем текстовые данные в первые 5 колонок
-        for (int j = 0; j < 5; ++j) {
+    // Добавляем невалидные строки в конец
+    for (const auto &rowData : emptyRows) {
+        addRowToTable(rowData);
+    }
+}
+
+void EmployeeTable::addRowToTable(const QList<QVariant> &rowData) {
+    int row = table->rowCount();
+    table->insertRow(row);
+
+    // Заполняем данные
+    for (int j = 0; j < 5 && j < rowData.size(); ++j) {
+        if (!rowData[j].toString().isEmpty()) {
             table->setItem(row, j, new QTableWidgetItem(rowData[j].toString()));
         }
-
-        // Создаём кнопку "Удалить" для строки
-        QPushButton *deleteButton = new QPushButton("Удалить");
-        table->setCellWidget(row, 5, deleteButton); // Устанавливаем кнопку в 6-ю колонку
-
-        // Подключаем сигнал нажатия на кнопку к функции удаления строки
-        connect(deleteButton, &QPushButton::clicked, [this, deleteButton]() {
-            int rowToDelete = table->indexAt(deleteButton->pos()).row();
-            deleteRow(rowToDelete); // Удаляем строку по найденному индексу
-        });
     }
+
+    // Добавляем кнопку удаления
+    QPushButton *deleteButton = new QPushButton("Удалить");
+    table->setCellWidget(row, 5, deleteButton);
+    connect(deleteButton, &QPushButton::clicked, [this, deleteButton]() {
+        int rowToDelete = table->indexAt(deleteButton->pos()).row();
+        if (rowToDelete >= 0) {
+            deleteRow(rowToDelete);
+        }
+    });
 }
 
 void EmployeeTable::applySorting(int sortType)

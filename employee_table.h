@@ -31,6 +31,9 @@ private slots:
     // Описание процесса сортировки
     void customSort(int column, bool ascending);
 
+    // Вспомогательная функция для добавления строки
+    void addRowToTable(const QList<QVariant> &rowData);
+
     // Применение сортировки
     void applySorting(int sortType);
 
@@ -41,6 +44,11 @@ private:
     // Методы для загрузки и сохранения данных
     void loadDataFromFile(const QString &filename);
     void saveDataToFile(const QString &filename);
+
+    // Методы для валидации ввода
+    QRegularExpressionValidator* createPhoneValidator();
+    QRegularExpressionValidator* createSalaryValidator();
+    QRegularExpressionValidator* createDateValidator();
 
 protected:
     // Переопределённое событие закрытия окна
