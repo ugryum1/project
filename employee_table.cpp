@@ -66,7 +66,7 @@ EmployeeTable::EmployeeTable(QWidget *parent) : QMainWindow(parent) {
     table->setColumnWidth(1, 150);
     table->setColumnWidth(2, 200);
     table->setColumnWidth(3, 120);
-    table->setColumnWidth(4, 120);
+    table->setColumnWidth(4, 100);
     table->setColumnWidth(5, 100);  // Кнопка "Удалить"
 
     // Настройка валидаторов ввода
